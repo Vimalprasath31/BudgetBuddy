@@ -38,7 +38,7 @@ jobs:
 
       - name: Build APK
         run: |
-          unzip -o My_Money_Android_Studio_Project.zip -d extracted
+          unzip -o Budget_Buddy_2_0_Android_Project -d extracted
           gradle -p extracted/MyMoneyAndroid assembleDebug
 
       - name: Save APK
