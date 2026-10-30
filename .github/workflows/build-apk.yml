@@ -1,3 +1,4 @@
+
 name: Build Budget Buddy 2.0 APK
 
 on:
@@ -6,51 +7,80 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-24.04
 
     steps:
-      # Step 1: Get source code from GitHub
+      # 1. Download repository
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      # Step 2: Configure Java
+      # 2. Install Java
       - name: Set up Java 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      # Step 3: Configure Android SDK
+      # 3. Set up Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # Step 4: Install required Android packages
+      # 4. Install required Android SDK packages
       - name: Install Android SDK packages
         run: |
-          sdkmanager "platform-tools" \
+          sdkmanager --licenses
+          sdkmanager \
+            "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-      # Step 5: Configure Gradle
+      # 5. Install Gradle
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      # Step 6: Extract Budget Buddy project
-      - name: Extract Budget Buddy 2.0 project
+      # 6. Check project ZIP
+      - name: Check project ZIP
         run: |
-          unzip -o Budget_Buddy_2_0_Android_Project.zip -d extracted
+          echo "Checking project ZIP..."
+          ls -lah
+          test -f Budget_Buddy_2_0_Android_Project.zip
 
-      # Step 7: Build APK
+      # 7. Extract Android project
+      - name: Extract Budget Buddy project
+        run: |
+          mkdir -p extracted
+          unzip -o Budget_Buddy_2_0_Android_Project.zip -d extracted
+          echo "Project files:"
+          ls -lah extracted/MyMoneyAndroid
+          test -f extracted/MyMoneyAndroid/settings.gradle
+          test -f extracted/MyMoneyAndroid/build.gradle
+          test -f extracted/MyMoneyAndroid/app/build.gradle
+
+      # 8. Build APK
       - name: Build Budget Buddy Debug APK
         run: |
-          gradle -p extracted/MyMoneyAndroid assembleDebug
+          gradle \
+            -p extracted/MyMoneyAndroid \
+            --no-daemon \
+            --stacktrace \
+            assembleDebug
 
-      # Step 8: Upload APK
+      # 9. Check APK
+      - name: Verify APK
+        run: |
+          APK="extracted/MyMoneyAndroid/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
+          ls -lh "$APK"
+
+      # 10. Upload APK
       - name: Upload Budget Buddy APK
         uses: actions/upload-artifact@v4
         with:
