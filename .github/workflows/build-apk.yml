@@ -31,7 +31,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
-      # 4. Install required SDK packages
+      # 4. Install Android SDK packages
       - name: Install Android SDK packages
         run: |
           sdkmanager --licenses
@@ -40,59 +40,83 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-      # 5. Setup compatible Gradle 8.9
+      # 5. Setup Gradle 8.9
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
 
-      # 6. Check project ZIP
+      # 6. Verify project ZIP
       - name: Verify project ZIP
         run: |
           echo "Checking project ZIP..."
           ls -lah
           test -f Budget_Buddy_2_0_Android_Project.zip
+          echo "Project ZIP found successfully."
 
-      # 7. Extract project
+      # 7. Extract Android project
       - name: Extract Android project
+        shell: bash
         run: |
           mkdir -p extracted
+
           unzip -o Budget_Buddy_2_0_Android_Project.zip -d extracted
 
-          echo "Checking project files..."
-          test -f extracted/MyMoneyAndroid/settings.gradle
-          test -f extracted/MyMoneyAndroid/build.gradle
-          test -f extracted/MyMoneyAndroid/app/build.gradle
-          test -f extracted/MyMoneyAndroid/app/src/main/AndroidManifest.xml
-          test -f extracted/MyMoneyAndroid/app/src/main/java/com/vimal/mymoney/MainActivity.java
+          echo "Searching for Android project..."
+
+          PROJECT_DIR=$(find extracted -type f -name settings.gradle -printf '%h\n' -quit)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: settings.gradle not found!"
+            find extracted -maxdepth 5 -type f
+            exit 1
+          fi
+
+          echo "Project found at: $PROJECT_DIR"
+
+          # Verify required project files
+          test -f "$PROJECT_DIR/build.gradle"
+          test -f "$PROJECT_DIR/app/build.gradle"
+          test -f "$PROJECT_DIR/app/src/main/AndroidManifest.xml"
+          test -f "$PROJECT_DIR/app/src/main/java/com/vimal/mymoney/MainActivity.java"
+          test -f "$PROJECT_DIR/app/src/main/java/com/vimal/mymoney/FinanceDb.java"
+
+          # Make project path available to later steps
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+          echo "All project files verified successfully."
 
       # 8. Build APK
       - name: Build Budget Buddy Debug APK
         run: |
+          echo "Building Budget Buddy APK..."
+
           gradle \
-            -p extracted/MyMoneyAndroid \
+            -p "$PROJECT_DIR" \
             --no-daemon \
             --stacktrace \
             clean assembleDebug
 
-      # 9. Verify APK
+      # 9. Verify generated APK
       - name: Verify generated APK
         run: |
-          APK="extracted/MyMoneyAndroid/app/build/outputs/apk/debug/app-debug.apk"
+          APK="$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
-            echo "APK was not generated!"
+            echo "ERROR: APK was not generated!"
             exit 1
           fi
 
           echo "APK generated successfully:"
           ls -lh "$APK"
 
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+
       # 10. Upload APK
       - name: Upload Budget Buddy APK
         uses: actions/upload-artifact@v7
         with:
           name: Budget-Buddy-2.0-APK
-          path: extracted/MyMoneyAndroid/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.APK_PATH }}
           if-no-files-found: error
           retention-days: 30
