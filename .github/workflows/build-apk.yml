@@ -54,6 +54,7 @@ jobs:
           test -f Budget_Buddy_2_0_Android_Project.zip
           echo "Project ZIP found successfully."
 
+      
       # 7. Extract Android project
       - name: Extract Android project
         shell: bash
@@ -64,24 +65,22 @@ jobs:
 
           echo "Searching for Android project..."
 
-          PROJECT_DIR=$(find extracted -type f -name settings.gradle -printf '%h\n' -quit)
+          PROJECT_DIR=$(find extracted -type f -name settings.gradle -printf '%h\n' | head -n 1)
 
           if [ -z "$PROJECT_DIR" ]; then
             echo "ERROR: settings.gradle not found!"
-            find extracted -maxdepth 5 -type f
+            find extracted -maxdepth 6 -type f
             exit 1
           fi
 
-          echo "Project found at: $PROJECT_DIR"
+          echo "Project found: $PROJECT_DIR"
 
-          # Verify required project files
           test -f "$PROJECT_DIR/build.gradle"
           test -f "$PROJECT_DIR/app/build.gradle"
           test -f "$PROJECT_DIR/app/src/main/AndroidManifest.xml"
           test -f "$PROJECT_DIR/app/src/main/java/com/vimal/mymoney/MainActivity.java"
           test -f "$PROJECT_DIR/app/src/main/java/com/vimal/mymoney/FinanceDb.java"
 
-          # Make project path available to later steps
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
           echo "All project files verified successfully."
@@ -89,8 +88,6 @@ jobs:
       # 8. Build APK
       - name: Build Budget Buddy Debug APK
         run: |
-          echo "Building Budget Buddy APK..."
-
           gradle \
             -p "$PROJECT_DIR" \
             --no-daemon \
